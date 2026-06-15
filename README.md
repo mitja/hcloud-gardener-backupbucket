@@ -41,15 +41,20 @@ etcd-backup-restore secret.
 go build ./...                                   # compile
 docker build -t ghcr.io/mitja/hcloud-gardener-backupbucket:dev .
 ```
-CI:
-- **Public release** — `.github/workflows/release.yml` (GitHub Actions) runs on a `v*`
-  tag: `go vet`/`go test`, builds + pushes `ghcr.io/mitja/hcloud-gardener-backupbucket:
-  {<tag>,latest}` (the image the seed pulls; mirrors `hcloud-gardener-dnsrecord`) using
-  the built-in `GITHUB_TOKEN` (no PAT), and publishes a GitHub release with the generated
+CI — the image is built + published to **both** registries (policy: every image is kept on
+Forgejo so the platform never depends on GHCR uptime; public repos also publish to GHCR):
+- **GHCR (public pull source)** — `.github/workflows/release.yml` (GitHub Actions) runs on
+  a `v*` tag: `go vet`/`go test`, builds + pushes `ghcr.io/mitja/hcloud-gardener-backupbucket:
+  {<tag>,latest}` (what the seed pulls; mirrors `hcloud-gardener-dnsrecord`) via the
+  built-in `GITHUB_TOKEN` (no PAT), and publishes a GitHub release with the generated
   `controller-registration.yaml`.
-- **Private dev build** — `.forgejo/workflows/build.yml` (Forgejo Actions) runs on push
-  to `main`/tags and pushes `git.paasbox.com/paasbox/hcloud-gardener-backupbucket:
-  {<sha>,latest}`; secrets `REGISTRY_USER`/`REGISTRY_TOKEN`.
+- **Forgejo (always-available fallback)** — `.forgejo/workflows/build.yml` (Forgejo
+  Actions) runs on push to `main`/tags and pushes
+  `git.paasbox.com/paasbox/hcloud-gardener-backupbucket:{<sha>,latest}`; secrets
+  `REGISTRY_USER`/`REGISTRY_TOKEN`. Repoint `image.repository` here to fail over.
+
+The repo lives on **both** git hosts (public GitHub + private Forgejo); push commits and
+tags to both remotes so both CIs build.
 
 ## Install (register in the virtual garden)
 

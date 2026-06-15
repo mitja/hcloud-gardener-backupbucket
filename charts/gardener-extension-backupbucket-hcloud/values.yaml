@@ -1,8 +1,9 @@
 image:
-  # Distributed as a PUBLIC image on ghcr.io (mirrors hcloud-gardener-dnsrecord) so
-  # the seed can pull it without a pull secret. Published by GitHub Actions on a v* tag
-  # (.github/workflows/release.yml, via the built-in GITHUB_TOKEN). The Forgejo CI only
-  # builds a private dev image (git.paasbox.com/paasbox/hcloud-gardener-backupbucket).
+  # Public pull source: ghcr.io (mirrors hcloud-gardener-dnsrecord) so the seed pulls
+  # without a pull secret; published by GitHub Actions on a v* tag (release.yml, built-in
+  # GITHUB_TOKEN). A private copy is ALSO built + kept on the Forgejo registry
+  # (git.paasbox.com/paasbox/hcloud-gardener-backupbucket) as a fallback if ghcr is down
+  # — repoint image.repository there (+ imagePullSecrets) to fail over.
   repository: ghcr.io/mitja/hcloud-gardener-backupbucket
   tag: latest
   pullPolicy: IfNotPresent
