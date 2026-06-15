@@ -53,6 +53,20 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Package + push Helm chart as an OCI artifact
+        # gardener-operator's Extension can only reference a chart via ociRepository
+        # (no rawChart), so the chart is published to ghcr as an OCI artifact for the
+        # virtual-garden (operator) backup path. The ControllerRegistration (gardenlet/
+        # shoot path) still inlines the chart via rawChart in controller-registration.yaml.
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          helm package charts/gardener-extension-backupbucket-hcloud \
+            --version "$VER" --app-version "${GITHUB_REF_NAME}"
+          helm push "gardener-extension-backupbucket-hcloud-$VER.tgz" oci://${{ env.REGISTRY }}/mitja/charts
+
       - name: Generate controller-registration.yaml
         run: |
           ./hack/generate-controller-registration.sh \
