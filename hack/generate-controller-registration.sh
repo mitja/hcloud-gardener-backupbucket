@@ -66,6 +66,7 @@ spec:
   deployment:
     deploymentRefs:
     - name: ${NAME}
+    policy: OnDemand
   resources:
   - kind: BackupBucket
     type: ${PROVIDER_TYPE}

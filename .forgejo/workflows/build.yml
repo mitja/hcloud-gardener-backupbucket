@@ -1,7 +1,11 @@
-# Build the extension image and push it to the Forgejo registry.
-# Runs on the central runner (label "docker"); docker talks to its dind.
-# The Go build happens inside the multi-stage Dockerfile, so the runner only
-# needs docker. Registry creds = org-level Actions secrets REGISTRY_USER/REGISTRY_TOKEN.
+# Build the extension image and push it to BOTH registries:
+#  - git.paasbox.com/paasbox/...  (private Forgejo build for dev/validation)
+#  - ghcr.io/mitja/...            (PUBLIC release the seed pulls — mirrors dnsrecord)
+# Runs on the central runner (label "docker"); docker talks to its dind. The Go build
+# happens inside the multi-stage Dockerfile, so the runner only needs docker.
+# Secrets (org-level Actions secrets):
+#   REGISTRY_USER / REGISTRY_TOKEN   Forgejo registry
+#   GHCR_USER     / GHCR_TOKEN       GitHub PAT with write:packages (for ghcr.io)
 name: build-image
 on:
   push:
@@ -14,15 +18,31 @@ jobs:
       - uses: actions/checkout@v4
       - name: Log in to the Forgejo registry
         run: echo "${{ secrets.REGISTRY_TOKEN }}" | docker login git.paasbox.com -u "${{ secrets.REGISTRY_USER }}" --password-stdin
+      - name: Log in to ghcr.io (public release; skipped until GHCR_TOKEN is set)
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        if: ${{ env.GHCR_TOKEN != '' }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
       - name: Build and push
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         run: |
-          IMG=git.paasbox.com/paasbox/hcloud-gardener-backupbucket
+          FJ=git.paasbox.com/paasbox/hcloud-gardener-backupbucket
+          GHCR=ghcr.io/mitja/hcloud-gardener-backupbucket
           SHORT=$(echo "${GITHUB_SHA}" | cut -c1-12)
-          docker build --build-arg VERSION="$SHORT" -t "$IMG:$SHORT" -t "$IMG:latest" .
-          docker push "$IMG:$SHORT"
-          docker push "$IMG:latest"
-          # On a version tag, also push that tag.
-          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
-            docker tag "$IMG:$SHORT" "$IMG:${GITHUB_REF_NAME}"
-            docker push "$IMG:${GITHUB_REF_NAME}"
-          fi
+          # Always push the private Forgejo build; push the public ghcr image too
+          # once GHCR_TOKEN is configured (keeps CI green before that).
+          REGS="$FJ"
+          [ -n "$GHCR_TOKEN" ] && REGS="$FJ $GHCR"
+          TAGS=""
+          for IMG in $REGS; do TAGS="$TAGS -t $IMG:$SHORT -t $IMG:latest"; done
+          docker build --build-arg VERSION="$SHORT" $TAGS .
+          for IMG in $REGS; do
+            docker push "$IMG:$SHORT"
+            docker push "$IMG:latest"
+            # On a version tag, also push that tag.
+            if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+              docker tag "$IMG:$SHORT" "$IMG:${GITHUB_REF_NAME}"
+              docker push "$IMG:${GITHUB_REF_NAME}"
+            fi
+          done

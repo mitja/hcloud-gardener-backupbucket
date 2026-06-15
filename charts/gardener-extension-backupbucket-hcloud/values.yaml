@@ -1,5 +1,8 @@
 image:
-  repository: git.paasbox.com/paasbox/hcloud-gardener-backupbucket
+  # Distributed as a PUBLIC image on ghcr.io (mirrors hcloud-gardener-dnsrecord) so
+  # the seed can pull it without a pull secret. The Forgejo CI also pushes a private
+  # build to git.paasbox.com/paasbox/hcloud-gardener-backupbucket for dev/validation.
+  repository: ghcr.io/mitja/hcloud-gardener-backupbucket
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -29,7 +32,8 @@ heartbeat:
 logLevel: info
 logFormat: json
 
-# private registry pull secret(s) — the image lives in the private Forgejo registry
+# optional pull secret(s) — not needed for the public ghcr.io image; set only if you
+# point image.repository at a private registry
 imagePullSecrets: []
 
 podAnnotations: {}

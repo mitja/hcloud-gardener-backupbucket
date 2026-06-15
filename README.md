@@ -39,11 +39,15 @@ etcd-backup-restore secret.
 
 ```sh
 go build ./...                                   # compile
-docker build -t git.paasbox.com/paasbox/hcloud-gardener-backupbucket:dev .
+docker build -t ghcr.io/mitja/hcloud-gardener-backupbucket:dev .
 ```
-CI: `.forgejo/workflows/build.yml` builds + pushes `git.paasbox.com/paasbox/
-hcloud-gardener-backupbucket:{<sha>,latest}` on push to `main` (org Actions secrets
-`REGISTRY_USER`/`REGISTRY_TOKEN`).
+CI: `.forgejo/workflows/build.yml` builds + pushes on push to `main` (and `v*` tags) to
+**both** registries:
+- `ghcr.io/mitja/hcloud-gardener-backupbucket:{<sha>,latest}` — the **public** release
+  the seed pulls (mirrors `hcloud-gardener-dnsrecord`); secrets `GHCR_USER`/`GHCR_TOKEN`
+  (a GitHub PAT with `write:packages`).
+- `git.paasbox.com/paasbox/hcloud-gardener-backupbucket:{<sha>,latest}` — private Forgejo
+  build for dev/validation; secrets `REGISTRY_USER`/`REGISTRY_TOKEN`.
 
 ## Install (register in the virtual garden)
 
@@ -51,8 +55,9 @@ hcloud-gardener-backupbucket:{<sha>,latest}` on push to `main` (org Actions secr
 hack/generate-controller-registration.sh   # → example/controller-registration.yaml (chart inlined)
 kubectl apply -f example/controller-registration.yaml   # against the virtual garden
 ```
-Because the image is in a **private** registry, set `image.pullPolicy` + an
-`imagePullSecrets` in the ControllerDeployment `values` (chart `values.yaml`).
+The chart defaults to the **public** `ghcr.io/mitja/hcloud-gardener-backupbucket` image,
+so no pull secret is needed. To pull from the private Forgejo registry instead, override
+`image.repository` and set `imagePullSecrets` in the ControllerDeployment `values`.
 
 Then enable seed backups, e.g.:
 ```yaml
