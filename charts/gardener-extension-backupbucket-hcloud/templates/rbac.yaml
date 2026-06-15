@@ -6,6 +6,17 @@ metadata:
   labels:
 {{ include "labels" . | indent 4 }}
 rules:
+# Namespaces: the extension manager's cache lists/watches namespaces to scope its
+# informers; without this the cache never syncs, so the BackupEntry controller never
+# starts and BackupEntries stall in "Processing" (stalling shoot reconciles).
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
 # BackupBucket/BackupEntry resources this extension reconciles, plus Cluster context.
 - apiGroups:
   - extensions.gardener.cloud
@@ -21,6 +32,17 @@ rules:
   - watch
   - patch
   - update
+# namespaces: the BackupEntry generic actuator resolves the shoot control-plane namespace
+# (and the manager cache watches Namespaces cluster-wide), so list/watch is required —
+# without it the BackupEntry reconcile hangs at "Failed to watch *v1.Namespace".
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
 # secrets: read the backup secretRef; create/update the generated bucket secret and
 # the per-entry etcd-backup-restore secret. configmaps + events for status reporting.
 - apiGroups:
