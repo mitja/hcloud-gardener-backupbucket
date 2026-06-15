@@ -41,13 +41,15 @@ etcd-backup-restore secret.
 go build ./...                                   # compile
 docker build -t ghcr.io/mitja/hcloud-gardener-backupbucket:dev .
 ```
-CI: `.forgejo/workflows/build.yml` builds + pushes on push to `main` (and `v*` tags) to
-**both** registries:
-- `ghcr.io/mitja/hcloud-gardener-backupbucket:{<sha>,latest}` — the **public** release
-  the seed pulls (mirrors `hcloud-gardener-dnsrecord`); secrets `GHCR_USER`/`GHCR_TOKEN`
-  (a GitHub PAT with `write:packages`).
-- `git.paasbox.com/paasbox/hcloud-gardener-backupbucket:{<sha>,latest}` — private Forgejo
-  build for dev/validation; secrets `REGISTRY_USER`/`REGISTRY_TOKEN`.
+CI:
+- **Public release** — `.github/workflows/release.yml` (GitHub Actions) runs on a `v*`
+  tag: `go vet`/`go test`, builds + pushes `ghcr.io/mitja/hcloud-gardener-backupbucket:
+  {<tag>,latest}` (the image the seed pulls; mirrors `hcloud-gardener-dnsrecord`) using
+  the built-in `GITHUB_TOKEN` (no PAT), and publishes a GitHub release with the generated
+  `controller-registration.yaml`.
+- **Private dev build** — `.forgejo/workflows/build.yml` (Forgejo Actions) runs on push
+  to `main`/tags and pushes `git.paasbox.com/paasbox/hcloud-gardener-backupbucket:
+  {<sha>,latest}`; secrets `REGISTRY_USER`/`REGISTRY_TOKEN`.
 
 ## Install (register in the virtual garden)
 
