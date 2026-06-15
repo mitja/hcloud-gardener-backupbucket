@@ -29,8 +29,8 @@ type AddOptions struct {
 	Controller controller.Options
 	// IgnoreOperationAnnotation specifies whether to ignore the operation annotation.
 	IgnoreOperationAnnotation bool
-	// ExtensionClass defines the extension class this extension is responsible for.
-	ExtensionClass extensionsv1alpha1.ExtensionClass
+	// ExtensionClasses defines the extension classes this extension is responsible for.
+	ExtensionClasses []extensionsv1alpha1.ExtensionClass
 }
 
 // AddToManager adds the BackupBucket controller with the default options.
@@ -46,6 +46,6 @@ func AddToManagerWithOptions(_ context.Context, mgr manager.Manager, opts AddOpt
 		Predicates:                backupbucket.DefaultPredicates(opts.IgnoreOperationAnnotation),
 		Type:                      Type,
 		IgnoreOperationAnnotation: opts.IgnoreOperationAnnotation,
-		ExtensionClass:            opts.ExtensionClass,
+		ExtensionClasses:          opts.ExtensionClasses,
 	})
 }

@@ -125,8 +125,12 @@ func (o *Options) run(ctx context.Context) error {
 	o.heartbeatOptions.Completed().Apply(&heartbeat.DefaultAddOptions)
 
 	reconcileCfg := o.reconcileOptions.Completed()
-	reconcileCfg.Apply(&hcloudbackupbucket.DefaultAddOptions.IgnoreOperationAnnotation, &hcloudbackupbucket.DefaultAddOptions.ExtensionClass)
-	reconcileCfg.Apply(&hcloudbackupentry.DefaultAddOptions.IgnoreOperationAnnotation, &hcloudbackupentry.DefaultAddOptions.ExtensionClass)
+	reconcileCfg.Apply(&hcloudbackupbucket.DefaultAddOptions.IgnoreOperationAnnotation)
+	reconcileCfg.Apply(&hcloudbackupentry.DefaultAddOptions.IgnoreOperationAnnotation)
+
+	extensionClasses := o.generalOptions.Completed().ExtensionClasses
+	hcloudbackupbucket.DefaultAddOptions.ExtensionClasses = extensionClasses
+	hcloudbackupentry.DefaultAddOptions.ExtensionClasses = extensionClasses
 
 	if err := o.controllerSwitches.Completed().AddToManager(ctx, mgr); err != nil {
 		return fmt.Errorf("could not add controllers to manager: %w", err)
