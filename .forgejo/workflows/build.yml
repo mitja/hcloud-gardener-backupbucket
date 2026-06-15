@@ -1,0 +1,28 @@
+# Build the extension image and push it to the Forgejo registry.
+# Runs on the central runner (label "docker"); docker talks to its dind.
+# The Go build happens inside the multi-stage Dockerfile, so the runner only
+# needs docker. Registry creds = org-level Actions secrets REGISTRY_USER/REGISTRY_TOKEN.
+name: build-image
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+jobs:
+  build:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to the Forgejo registry
+        run: echo "${{ secrets.REGISTRY_TOKEN }}" | docker login git.paasbox.com -u "${{ secrets.REGISTRY_USER }}" --password-stdin
+      - name: Build and push
+        run: |
+          IMG=git.paasbox.com/paasbox/hcloud-gardener-backupbucket
+          SHORT=$(echo "${GITHUB_SHA}" | cut -c1-12)
+          docker build --build-arg VERSION="$SHORT" -t "$IMG:$SHORT" -t "$IMG:latest" .
+          docker push "$IMG:$SHORT"
+          docker push "$IMG:latest"
+          # On a version tag, also push that tag.
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            docker tag "$IMG:$SHORT" "$IMG:${GITHUB_REF_NAME}"
+            docker push "$IMG:${GITHUB_REF_NAME}"
+          fi

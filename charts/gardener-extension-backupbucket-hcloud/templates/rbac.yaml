@@ -1,0 +1,75 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "name" . }}
+  labels:
+{{ include "labels" . | indent 4 }}
+rules:
+# BackupBucket/BackupEntry resources this extension reconciles, plus Cluster context.
+- apiGroups:
+  - extensions.gardener.cloud
+  resources:
+  - backupbuckets
+  - backupbuckets/status
+  - backupentries
+  - backupentries/status
+  - clusters
+  verbs:
+  - get
+  - list
+  - watch
+  - patch
+  - update
+# secrets: read the backup secretRef; create/update the generated bucket secret and
+# the per-entry etcd-backup-restore secret. configmaps + events for status reporting.
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  - configmaps
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+# Leader election and heartbeat leases.
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - list
+  - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  resourceNames:
+  - {{ include "leaderelectionid" . }}
+  - gardener-extension-heartbeat
+  verbs:
+  - get
+  - watch
+  - update
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "name" . }}
+  labels:
+{{ include "labels" . | indent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "name" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "name" . }}
+  namespace: {{ .Release.Namespace }}

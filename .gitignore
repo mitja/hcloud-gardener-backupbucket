@@ -1,0 +1,9 @@
+# Binaries
+/gardener-extension-backupbucket-hcloud
+*.test
+# Go
+/bin/
+/vendor/
+# editor / OS
+.DS_Store
+*.swp

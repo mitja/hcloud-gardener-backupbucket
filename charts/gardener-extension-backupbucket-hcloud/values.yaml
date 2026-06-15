@@ -1,0 +1,38 @@
+image:
+  repository: git.paasbox.com/paasbox/hcloud-gardener-backupbucket
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+# vertical pod autoscaler (optional)
+vpa:
+  enabled: true
+  updateMode: Auto
+
+# controller settings (one --max-concurrent-reconciles for both controllers)
+controllers:
+  concurrentSyncs: 5
+  ignoreOperationAnnotation: false
+
+# heartbeat lease renew interval in seconds
+heartbeat:
+  renewIntervalSeconds: 30
+
+logLevel: info
+logFormat: json
+
+# private registry pull secret(s) — the image lives in the private Forgejo registry
+imagePullSecrets: []
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
