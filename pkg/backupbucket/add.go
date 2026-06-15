@@ -13,8 +13,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-// Type is the BackupBucket provider type this extension claims.
-const Type = "hcloud"
+// Type is the BackupBucket provider type this extension claims. It MUST be a value
+// etcd-druid maps to an S3 store (storageProviderFromInfraProvider) — the seed/garden
+// backup provider is fed straight through as the etcd store provider, so "hcloud" would
+// be rejected ("unsupported storage provider"). "S3" names the protocol (S3-compatible
+// object storage); the implementation underneath is still Hetzner Object Storage.
+const Type = "S3"
 
 // DefaultAddOptions are the default AddOptions for AddToManager.
 var DefaultAddOptions = AddOptions{}

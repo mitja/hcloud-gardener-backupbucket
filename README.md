@@ -1,10 +1,15 @@
 # gardener-extension-backupbucket-hcloud
 
 A [Gardener](https://gardener.cloud) extension implementing the **BackupBucket**
-and **BackupEntry** contracts for **Hetzner Object Storage** (S3-compatible),
-provider type **`hcloud`**. It lets gardenlet/etcd-druid back up the virtual-garden
-and shoot etcds to Hetzner Object Storage — the piece `provider-hcloud` does not
-ship (no native BackupBucket controller).
+and **BackupEntry** contracts for **Hetzner Object Storage** (S3-compatible). It lets
+gardenlet/etcd-druid back up the virtual-garden and shoot etcds to Hetzner Object
+Storage — the piece `provider-hcloud` does not ship (no native BackupBucket controller).
+
+It registers the provider type **`S3`** (not `hcloud`): etcd-druid feeds the seed/garden
+backup provider straight through as the etcd store provider and only accepts a fixed set
+(`aws`/`S3`/`stackit`/…), rejecting `hcloud` as an *"unsupported storage provider"*. `S3`
+names the **protocol**; the implementation underneath is still Hetzner Object Storage
+(custom endpoint via the secret). This is the Hetzner/`hcloud` S3-backup extension.
 
 Sibling to [`hcloud-gardener-dnsrecord`](../hcloud-gardener-dnsrecord) and built the
 same way; pinned to gardener **v1.122.3**.
@@ -13,8 +18,8 @@ same way; pinned to gardener **v1.122.3**.
 
 | Resource | Reconcile | Delete |
 |---|---|---|
-| `BackupBucket` (type `hcloud`) | create the S3 bucket (named after the BackupBucket) + publish a generated secret with the S3 credentials → `status.generatedSecretRef` | delete the generated secret, then empty + delete the bucket |
-| `BackupEntry` (type `hcloud`) | (generic actuator) write the per-entry etcd-backup-restore secret from `GetETCDSecretData` | delete the entry's `<entry>/` prefix from the bucket |
+| `BackupBucket` (type `S3`) | create the S3 bucket (named after the BackupBucket) + publish a generated secret with the S3 credentials → `status.generatedSecretRef` | delete the generated secret, then empty + delete the bucket |
+| `BackupEntry` (type `S3`) | (generic actuator) write the per-entry etcd-backup-restore secret from `GetETCDSecretData` | delete the entry's `<entry>/` prefix from the bucket |
 
 The S3 client is [minio-go](https://github.com/minio/minio-go) against
 `https://<endpoint>` (TLS, V4 signing).
@@ -71,24 +76,29 @@ Then enable seed backups, e.g.:
 # Seed (or the Gardenlet seedConfig)
 spec:
   backup:
-    provider: hcloud
+    provider: S3            # NOT "hcloud" — see the note below; etcd-druid requires this
     region: nbg1
     secretRef:
       name: backup-hcloud
       namespace: garden
 ```
 
-## ⚠️ Known integration point to verify (etcd-backup-restore provider)
+## Why the provider type is `S3`, not `hcloud`
 
-Hetzner Object Storage is S3-compatible, so etcd-backup-restore must use its **S3**
-store provider **with the custom `endpoint`**. gardenlet derives the etcd store
-provider from the seed backup provider type (`hcloud`); etcd-backup-restore must map
-that to the `S3` protocol + honour the `endpoint` from the secret. This extension
-supplies the S3 credentials + endpoint in the etcd backup secret (via the BackupEntry
-`GetETCDSecretData`), but the provider/endpoint wiring on the etcd-druid /
-etcd-backup-restore side should be **validated end-to-end** on first use (it may need
-an etcd-druid image-vector / store-provider mapping). See the gardener etcd-backup
-docs. This is the main thing to test before relying on it.
+etcd-druid (v0.30.1, bundled with gardener v1.122.3) derives the etcd-backup-restore
+store provider **directly** from the seed/garden backup provider — `etcd.go` does
+`StorageProvider(backupConfig.Provider)` with **no translation** — and its
+`storageProviderFromInfraProvider` map only accepts a fixed set:
+`aws`/`S3`, `stackit`→S3, `azure`/`ABS`, `gcp`/`GCS`, `alicloud`/`OSS`,
+`openstack`/`Swift`, `dell`/`ECS`, `openshift`/`OCS`, `Local`. Anything else (e.g.
+`hcloud`) → **`"unsupported storage provider"`** and etcd backup never configures.
+
+So this extension registers the type **`S3`**, which druid maps to its S3 snapstore.
+Hetzner-specificity comes entirely through the **secret**: the BackupEntry
+`GetETCDSecretData` supplies `accessKeyID`/`secretAccessKey`/`region`/`endpoint`, and the
+S3 snapstore honours the custom `endpoint` (`nbg1.your-objectstorage.com`). Verified by
+reading the gardener/etcd-druid source; confirm end-to-end on first enablement that a
+snapshot lands in the bucket.
 
 ## License
 

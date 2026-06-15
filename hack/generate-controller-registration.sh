@@ -15,7 +15,9 @@ set -o nounset
 set -o pipefail
 
 NAME="backupbucket-hcloud"
-PROVIDER_TYPE="hcloud"
+# Provider type MUST be one etcd-druid maps to an S3 store (it rejects "hcloud" as an
+# unsupported storage provider). "S3" = the protocol; impl is still Hetzner Object Storage.
+PROVIDER_TYPE="S3"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CHART_DIR="${1:-${REPO_ROOT}/charts/gardener-extension-backupbucket-hcloud}"

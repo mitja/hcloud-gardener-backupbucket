@@ -14,8 +14,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-// Type is the BackupEntry provider type this extension claims.
-const Type = "hcloud"
+// Type is the BackupEntry provider type this extension claims. Must match the
+// BackupBucket Type ("S3") — see the note there on why it can't be "hcloud".
+const Type = "S3"
 
 // DefaultAddOptions are the default AddOptions for AddToManager.
 var DefaultAddOptions = AddOptions{}
