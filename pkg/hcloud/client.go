@@ -9,6 +9,7 @@ package hcloud
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -17,15 +18,15 @@ import (
 // Secret data keys this extension reads. Both camelCase and UPPER_SNAKE_CASE are
 // accepted so the same secret works for tooling that uses either convention.
 const (
-	keyAccessKeyID     = "accessKeyID"
-	keyAccessKeyIDAlt  = "ACCESS_KEY_ID"
-	keySecretKey       = "secretAccessKey"
-	keySecretKeyAlt    = "SECRET_ACCESS_KEY"
-	keyRegion          = "region"
-	keyRegionAlt       = "REGION"
-	keyEndpoint        = "endpoint"
-	keyEndpointAlt     = "ENDPOINT"
-	defaultRegion      = "nbg1"
+	keyAccessKeyID    = "accessKeyID"
+	keyAccessKeyIDAlt = "ACCESS_KEY_ID"
+	keySecretKey      = "secretAccessKey"
+	keySecretKeyAlt   = "SECRET_ACCESS_KEY"
+	keyRegion         = "region"
+	keyRegionAlt      = "REGION"
+	keyEndpoint       = "endpoint"
+	keyEndpointAlt    = "ENDPOINT"
+	defaultRegion     = "nbg1"
 )
 
 // Credentials holds the resolved Hetzner Object Storage S3 credentials.
@@ -49,7 +50,9 @@ func CredentialsFromSecret(data map[string][]byte) (*Credentials, error) {
 		AccessKeyID:     get(keyAccessKeyID, keyAccessKeyIDAlt),
 		SecretAccessKey: get(keySecretKey, keySecretKeyAlt),
 		Region:          get(keyRegion, keyRegionAlt),
-		Endpoint:        get(keyEndpoint, keyEndpointAlt),
+		// Canonical internal form is bare host[:port] (minio-go rejects a scheme). Accept either
+		// input form so the same secret works for tooling that supplies a URL.
+		Endpoint: stripScheme(get(keyEndpoint, keyEndpointAlt)),
 	}
 	if c.Region == "" {
 		c.Region = defaultRegion
@@ -63,14 +66,26 @@ func CredentialsFromSecret(data map[string][]byte) (*Credentials, error) {
 	return c, nil
 }
 
-// ETCDBackupSecretData returns the credential data in the canonical key layout
-// expected by etcd-backup-restore's S3 store provider.
+// stripScheme normalizes an endpoint to a bare host[:port]. minio-go's client rejects a
+// fully-qualified URL ("Endpoint url cannot have fully qualified paths").
+func stripScheme(ep string) string {
+	ep = strings.TrimPrefix(ep, "https://")
+	ep = strings.TrimPrefix(ep, "http://")
+	return strings.TrimRight(ep, "/")
+}
+
+// ETCDBackupSecretData returns the credential data in the canonical key layout expected by
+// etcd-backup-restore's S3 store provider. NB: etcd-backup-restore uses aws-sdk-go-v2, whose
+// endpoint resolver REQUIRES a valid URI — a bare host errors "was not a valid URI". So the
+// endpoint is emitted WITH an https:// scheme here, even though the bucket client (minio-go,
+// NewClient) uses the bare host. Feeding the same raw value to both was the bug that wedged
+// etcd (backup-restore could not init -> etcd never went Ready).
 func ETCDBackupSecretData(c *Credentials) map[string][]byte {
 	return map[string][]byte{
 		"accessKeyID":     []byte(c.AccessKeyID),
 		"secretAccessKey": []byte(c.SecretAccessKey),
 		"region":          []byte(c.Region),
-		"endpoint":        []byte(c.Endpoint),
+		"endpoint":        []byte("https://" + c.Endpoint),
 	}
 }
 
