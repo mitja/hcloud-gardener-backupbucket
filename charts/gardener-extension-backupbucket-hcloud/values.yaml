@@ -5,7 +5,10 @@ image:
   # (git.paasbox.com/paasbox/hcloud-gardener-backupbucket) as a fallback if ghcr is down
   # — repoint image.repository there (+ imagePullSecrets) to fail over.
   repository: ghcr.io/mitja/hcloud-gardener-backupbucket
-  tag: latest
+  # empty → the chart falls back to .Chart.AppVersion. CI packages the chart with
+  # --app-version=<git tag> (e.g. v0.1.4) and pushes the matching image tag, so the
+  # deployment auto-pins to the release instead of the floating :latest.
+  tag: ""
   pullPolicy: IfNotPresent
 
 replicaCount: 1
@@ -42,3 +45,14 @@ podAnnotations: {}
 podLabels: {}
 nodeSelector: {}
 tolerations: []
+
+# Injected by gardener-operator when this extension is deployed into the garden RUNTIME
+# cluster: the operator merges gardener.runtimeCluster.enabled=true + priorityClassName
+# (pkg/operator/controller/extension/extension/runtime/runtime.go). When enabled, the
+# controller reconciles the virtual-garden's own `class: garden` etcd BackupBucket via
+# --extension-classes=garden and runs with the garden-system priority class. On a seed
+# (gardenlet/shoot path, rawChart) this stays false → controller defaults to `shoot`.
+gardener:
+  runtimeCluster:
+    enabled: false
+    priorityClassName: gardener-garden-system-200

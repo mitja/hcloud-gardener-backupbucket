@@ -15,10 +15,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{- define "image" -}}
-  {{- if hasPrefix "sha256:" .Values.image.tag }}
-  {{- printf "%s@%s" .Values.image.repository .Values.image.tag }}
+  {{- $tag := .Values.image.tag | default .Chart.AppVersion -}}
+  {{- if hasPrefix "sha256:" $tag }}
+  {{- printf "%s@%s" .Values.image.repository $tag }}
   {{- else }}
-  {{- printf "%s:%s" .Values.image.repository .Values.image.tag }}
+  {{- printf "%s:%s" .Values.image.repository $tag }}
   {{- end }}
 {{- end -}}
 

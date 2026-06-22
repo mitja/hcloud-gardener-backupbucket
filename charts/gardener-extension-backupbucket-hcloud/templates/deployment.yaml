@@ -26,6 +26,9 @@ spec:
 {{ toYaml . | indent 8 }}
 {{- end }}
     spec:
+{{- if .Values.gardener.runtimeCluster.enabled }}
+      priorityClassName: {{ .Values.gardener.runtimeCluster.priorityClassName }}
+{{- end }}
       serviceAccountName: {{ include "name" . }}
 {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -47,6 +50,12 @@ spec:
         - --metrics-bind-address=:8080
         - --log-level={{ .Values.logLevel }}
         - --log-format={{ .Values.logFormat }}
+{{- if .Values.gardener.runtimeCluster.enabled }}
+        # Garden RUNTIME deployment (operator-injected gardener.runtimeCluster.enabled):
+        # reconcile the virtual-garden's own `class: garden` etcd BackupBucket. Without
+        # this the controller defaults to the `shoot` class and silently ignores it.
+        - --extension-classes=garden
+{{- end }}
         env:
         - name: LEADER_ELECTION_NAMESPACE
           valueFrom:
