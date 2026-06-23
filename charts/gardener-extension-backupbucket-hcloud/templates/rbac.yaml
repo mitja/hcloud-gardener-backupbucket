@@ -1,8 +1,14 @@
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
+# Cluster-scoped name is suffixed with the release Namespace: this chart is deployed TWICE on the
+# same cluster — once on the gardener-operator RUNTIME path (ns runtime-extension-backupbucket-hcloud)
+# and once as the per-seed ControllerInstallation (ns extension-backupbucket-hcloud-<hash>). With a
+# constant name both renders collided on one cluster-scoped ClusterRole/Binding (last-writer-wins), so
+# the seed SA was left UNBOUND -> "cannot list backupentries" -> BackupEntries stall in Processing ->
+# shoot reconcile stuck at 18%. Per-namespace names give each deploy its own non-colliding RBAC.
 metadata:
-  name: {{ include "name" . }}
+  name: {{ include "name" . }}-{{ .Release.Namespace }}
   labels:
 {{ include "labels" . | indent 4 }}
 rules:
@@ -84,13 +90,13 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "name" . }}
+  name: {{ include "name" . }}-{{ .Release.Namespace }}
   labels:
 {{ include "labels" . | indent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ include "name" . }}
+  name: {{ include "name" . }}-{{ .Release.Namespace }}
 subjects:
 - kind: ServiceAccount
   name: {{ include "name" . }}
